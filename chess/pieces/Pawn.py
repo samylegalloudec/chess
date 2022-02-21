@@ -13,14 +13,6 @@ class Pawn(Piece):
         self.first_round = False
         self.options["end"] = set()
 
-    def showOptions(self, board, pos):
-        if(self.optionsShowed==False):
-            self.calculateOptions(board, pos)
-            self.getOptions()
-            self.optionsShowed = True
-        else:
-            self.optionsShowed = False
-        #return super().showOptions()
 
     
     def optionsIfCanKill(self, board, pos):
@@ -34,7 +26,7 @@ class Pawn(Piece):
         y = pos[1]
         if self.color == 0:
             topLeft = board.board[x+1][y+1]
-            topRight = board.board[x-1][y+1]
+            topRight = board.board[x-1 if x-1 >=0 else 0][y+1]
             if(topLeft!=0):
                 if(topLeft.color != self.color):
                     self.options["end"].add((x+1,y+1))
@@ -42,7 +34,7 @@ class Pawn(Piece):
                 if(topRight.color != self.color):
                     self.options["end"].add((x-1,y+1))
         else:
-            topLeft = board.board[x+1][y-1]
+            topLeft = board.board[x+1][y-1 if y-1 >=0 else 0]
             topRight = board.board[x-1][y-1]
             if(topLeft!=0):
                 if(topLeft.color != self.color):
@@ -71,8 +63,8 @@ class Pawn(Piece):
             else:
                 end = (start[0], start[1]-pieceSize)
                 secondEnd = (start[0], start[1]-pieceSize*2)
-            firstOption = (int(end[0]/150), int(end[1]/150))
-            secondOption = (int(secondEnd[0]/150), int(secondEnd[1]/150))
+            firstOption = (int(end[0]/pieceSize), int(end[1]/pieceSize))
+            secondOption = (int(secondEnd[0]/pieceSize), int(secondEnd[1]/pieceSize))
             movements.append(firstOption)
             movements.append(secondOption)
         else:
@@ -80,7 +72,7 @@ class Pawn(Piece):
                 end = (start[0], start[1]+pieceSize)
             else:
                 end = (start[0], start[1]-pieceSize)
-            firstOption = (int(end[0]/150), int(end[1]/150))
+            firstOption = (int(end[0]/pieceSize), int(end[1]/pieceSize))
             movements.append(firstOption)
         return movements
 
@@ -96,7 +88,7 @@ class Pawn(Piece):
         """
         optionsBlocked = []
         for movement in options:
-            partition = self.checkIfEnnemyIsInTheWay(movement, board)
+            partition = self.checkIfEnnemyIsInTheWayVertically(movement, board)
             if partition != []:
                 self.ennemyInFrontOfMe = True
                 if(self.color==0):
@@ -116,161 +108,160 @@ class Pawn(Piece):
             pieceSize (int): _description_
         """
         start = self.options["start"]
-        start = self.pixelizePosition(start, pieceSize/2)
-        self.drawArrow(board.screen,(0,0,0), start, self.pixelizePosition(option, pieceSize/2))
+        start = self.pixelizePosition(start, pieceSize)
+        self.drawArrow(board.screen,(0,0,0), start, self.pixelizePosition(option, pieceSize))
 
-    def calculateOptions(self, board, pos):
+    def calculateOptions(self, board, pos): #TODO : à terme, empêcher de libérer le roi.
         """Calculate all options for the pawn
         Args:
             board (pygame.surface): The current board of the game
             pos (x,y): The position in PIXELS
         """
+        print('Calculating options for : ', self,self.color, board.getPositionOfClick(pos))
         pieceSize = board.screen.get_size()[0]/8                    #On récupère la taille d'une pièce via : La taille de l'écran divisé par le nombre de pièces
-        x = int(pos[0]/150)                                         #Permet de récupérer l'indice du pion dans le board. Le x et y dans board.y avancent par 150 dans la boucle
-        y = int(pos[1]/150)
+        x = int(pos[0]/pieceSize)                                   #Permet de récupérer l'indice du pion dans le board. Le x et y dans board.y avancent par pieceSize dans la boucle
+        y = int(pos[1]/pieceSize)
         start = pos
         start = (x*pieceSize+pieceSize/2, y*pieceSize+pieceSize/2)  # x*pieceSize : permet de récupérer la case, +pieceSize/2 -> d'aller au centre de celle ci
-        self.options["start"] = (int(start[0]/150), int(start[1]/150))
+        self.options["start"] = (int(start[0]/pieceSize), int(start[1]/pieceSize))
         
-        #On regarde si il y un ennemi tuable
-        self.optionsIfCanKill(board, (x,y))                         #On rajoute dans les options, les pièces tuables par le pion
+        
         #On calcule les options possibles
         movements = self.calculateMovement(start, pieceSize)
-        print('movements : ', movements)
-        #On regarde les obstacles
-        blockedMovements = self.checkObstacles(movements, board)
-        print('blocked movements : ', blockedMovements)
-        #On élimine les options impossibles
+
+        #On retire les movements ou il y a une pièce (non tuable) dans l'option
+        freeMovements = []
         for movement in movements:
+            if self.checkIfEnnemyInOptions(movement, board) == False:
+                freeMovements.append(movement)
+        
+        #On regarde les obstacles
+        blockedMovements = self.checkObstacles(freeMovements, board)
+        #On élimine les options impossibles 
+        for movement in freeMovements:
             if movement not in blockedMovements:
                 self.options["end"].add(movement)
+
+        #On regarde si il y un ennemi tuable
+        self.optionsIfCanKill(board, (x,y))                         #On rajoute dans les options, les pièces tuables par le pion
+
+
         #On dessine les options
+        print('options before drawing : ', self.options)
         for option in self.options["end"]:
             self.drawOption(option, board, pieceSize)
 
 
-    def calculateOptionsBis(self, board, pos):
-        """Calculate all options for the pawn :
-        - First round, he can move forward 2 rows
-        - Other rounds, only 1 row
-        - He can kill ennemy on his top left and top right
 
-        Args:
-            board (pygame.surface): The current board of the game
-            pos (x,y): The position in PIXELS
-        """
-        pieceSize = 150
-        x = int(pos[0]/150) #Permet de récupérer l'indice du pion dans le board. Le x et y dans board.y avancent par 150 dans la boucle
-        y = int(pos[1]/150)
-        start = pos
-        start = (x*pieceSize+pieceSize/2, y*pieceSize+pieceSize/2) # x*pieceSize : permet de récupérer la case, +pieceSize/2 -> d'aller au centre de celle ci
-        self.options["start"] = (int(start[0]/150), int(start[1]/150))
-        self.optionsIfCanKill(board, (x,y))
+    # def calculateOptionsBis(self, board, pos):
+    #     """Calculate all options for the pawn :
+    #     - First round, he can move forward 2 rows
+    #     - Other rounds, only 1 row
+    #     - He can kill ennemy on his top left and top right
 
-        if(len(self.options["end"]) != 0):
-            for option in self.options["end"]:
-                self.drawArrow(board.screen,(0,0,0), start, self.pixelizePosition(option, pieceSize/2))
+    #     Args:
+    #         board (pygame.surface): The current board of the game
+    #         pos (x,y): The position in PIXELS
+    #     """
+    #     pieceSize = pieceSize
+    #     x = int(pos[0]/pieceSize) #Permet de récupérer l'indice du pion dans le board. Le x et y dans board.y avancent par pieceSize dans la boucle
+    #     y = int(pos[1]/pieceSize)
+    #     start = pos
+    #     start = (x*pieceSize+pieceSize/2, y*pieceSize+pieceSize/2) # x*pieceSize : permet de récupérer la case, +pieceSize/2 -> d'aller au centre de celle ci
+    #     self.options["start"] = (int(start[0]/pieceSize), int(start[1]/pieceSize))
+    #     self.optionsIfCanKill(board, (x,y))
 
-        if self.first_round:
-            if self.color == 0:
-                end = (start[0], start[1]+pieceSize)
-                secondEnd = (start[0], start[1]+pieceSize*2)
+    #     if(len(self.options["end"]) != 0):
+    #         for option in self.options["end"]:
+    #             self.drawArrow(board.screen,(0,0,0), start, self.pixelizePosition(option, pieceSize/2))
 
-                options = []
+    #     if self.first_round:
+    #         if self.color == 0:
+    #             end = (start[0], start[1]+pieceSize)
+    #             secondEnd = (start[0], start[1]+pieceSize*2)
 
-                firstOption = (int(end[0]/150), int(end[1]/150))
-                secondOption = (int(secondEnd[0]/150), int(secondEnd[1]/150))
+    #             options = []
 
-                options.append(firstOption)
-                options.append(secondOption)
-                for option in options:
-                    partition = self.checkIfEnnemyIsInTheWay(option, board)
-                    if partition != []:
-                        print('il y a un obstacle askip')
-                        print("partition : ", partition)
-                        self.ennemyInFrontOfMe = True
-                    if not(self.checkIfEnnemyInOptions(option, board)) and not self.ennemyInFrontOfMe:
-                        self.drawArrow(board.screen,(0,0,0), start, self.pixelizePosition(option, pieceSize/2))
+    #             firstOption = (int(end[0]/pieceSize), int(end[1]/pieceSize))
+    #             secondOption = (int(secondEnd[0]/pieceSize), int(secondEnd[1]/pieceSize))
+
+    #             options.append(firstOption)
+    #             options.append(secondOption)
+    #             for option in options:
+    #                 partition = self.checkIfEnnemyIsInTheWay(option, board)
+    #                 if partition != []:
+    #                     self.ennemyInFrontOfMe = True
+    #                 if not(self.checkIfEnnemyInOptions(option, board)) and not self.ennemyInFrontOfMe:
+    #                     self.drawArrow(board.screen,(0,0,0), start, self.pixelizePosition(option, pieceSize/2))
                 
 
-                self.options["end"].add(firstOption)
-                self.options["end"].add(secondOption)
+    #             self.options["end"].add(firstOption)
+    #             self.options["end"].add(secondOption)
 
 
-                #  secondEnd)
-                # self.drawArrow(board.screen,(50,50,50), start, end)
-
-                
-            else:
-                end = (start[0], start[1]-pieceSize)
-                secondEnd = (start[0], start[1]-pieceSize*2)
-                # self.drawArrow(board.screen,(0,0,0), start, secondEnd)
-                # self.drawArrow(board.screen,(50,50,50), start, end)
-
-                options = []
-
-                firstOption = (int(end[0]/150), int(end[1]/150))
-                secondOption = (int(secondEnd[0]/150), int(secondEnd[1]/150))
-
-                options.append(firstOption)
-                options.append(secondOption)
-                for option in options:
-                    partition = self.checkIfEnnemyIsInTheWay(option, board)
-                    if partition != []:
-                        print("partition : ", partition)
-                        self.ennemyInFrontOfMe = True
-                    if not(self.checkIfEnnemyInOptions(option, board)) and not(self.ennemyInFrontOfMe):
-                        self.drawArrow(board.screen,(0,0,0), start, self.pixelizePosition(option, pieceSize/2))
+    #             #  secondEnd)
+    #             # self.drawArrow(board.screen,(50,50,50), start, end)
 
                 
-                self.options["end"].add(firstOption)
-                self.options["end"].add(secondOption)
-        else:
-            if self.color == 0:
-                end = (start[0], start[1]+pieceSize)
+    #         else:
+    #             end = (start[0], start[1]-pieceSize)
+    #             secondEnd = (start[0], start[1]-pieceSize*2)
+    #             # self.drawArrow(board.screen,(0,0,0), start, secondEnd)
+    #             # self.drawArrow(board.screen,(50,50,50), start, end)
+
+    #             options = []
+
+    #             firstOption = (int(end[0]/pieceSize), int(end[1]/pieceSize))
+    #             secondOption = (int(secondEnd[0]/pieceSize), int(secondEnd[1]/pieceSize))
+
+    #             options.append(firstOption)
+    #             options.append(secondOption)
+    #             for option in options:
+    #                 partition = self.checkIfEnnemyIsInTheWay(option, board)
+    #                 if partition != []:
+    #                     self.ennemyInFrontOfMe = True
+    #                 if not(self.checkIfEnnemyInOptions(option, board)) and not(self.ennemyInFrontOfMe):
+    #                     self.drawArrow(board.screen,(0,0,0), start, self.pixelizePosition(option, pieceSize/2))
+
                 
-                # self.drawArrow(board.screen,(50,50,50), start, end)
-
-                options = []
-
-                firstOption = (int(end[0]/150), int(end[1]/150))
-
-                options.append(firstOption)
-                for option in options:
-                    partition = self.checkIfEnnemyIsInTheWay(option, board)
-                    print('après partition : ', partition)
-                    print('my options : ', self.options)
-                    print(options)
-                    print('self.checkIfEnnemyInOptions(option, board)', self.checkIfEnnemyInOptions(option, board))
-                    print('self.ennemyInFrontOfMe : ', self.ennemyInFrontOfMe)
-                    if partition != []:
-                        print("partition : ", partition)
-                        self.ennemyInFrontOfMe = True
-                    if self.checkIfEnnemyInOptions(option, board) == False and self.ennemyInFrontOfMe==False:
-                        print('draw my options !')
-                        self.drawArrow(board.screen,(0,0,0), start, self.pixelizePosition(option, pieceSize/2))
-
-                self.options["end"].add(firstOption)
-            else:
-                end = (start[0], start[1]-pieceSize)
-                # self.drawArrow(board.screen,(50,50,50), start, end)
+    #             self.options["end"].add(firstOption)
+    #             self.options["end"].add(secondOption)
+    #     else:
+    #         if self.color == 0:
+    #             end = (start[0], start[1]+pieceSize)
                 
-                options = []
+    #             # self.drawArrow(board.screen,(50,50,50), start, end)
 
-                firstOption = (int(end[0]/150), int(end[1]/150))
+    #             options = []
 
-                options.append(firstOption)
-                for option in options:
-                    partition = self.checkIfEnnemyIsInTheWay(option, board)
-                    print('après partition : ', partition)
-                    if partition != []:
-                        print("partition : ", partition)
-                        self.ennemyInFrontOfMe = True
-                    if not(self.checkIfEnnemyInOptions(option, board)) and not(self.ennemyInFrontOfMe):
-                        print('draw my options !')
-                        self.drawArrow(board.screen,(0,0,0), start, self.pixelizePosition(option,pieceSize/2))
+    #             firstOption = (int(end[0]/pieceSize), int(end[1]/pieceSize))
 
-                self.options["end"].add(firstOption)
+    #             options.append(firstOption)
+    #             for option in options:
+    #                 partition = self.checkIfEnnemyIsInTheWay(option, board)
+    #                 if partition != []:
+    #                     self.ennemyInFrontOfMe = True
+    #                 if self.checkIfEnnemyInOptions(option, board) == False and self.ennemyInFrontOfMe==False:
+    #                     self.drawArrow(board.screen,(0,0,0), start, self.pixelizePosition(option, pieceSize/2))
+
+    #             self.options["end"].add(firstOption)
+    #         else:
+    #             end = (start[0], start[1]-pieceSize)
+    #             # self.drawArrow(board.screen,(50,50,50), start, end)
+                
+    #             options = []
+
+    #             firstOption = (int(end[0]/pieceSize), int(end[1]/pieceSize))
+
+    #             options.append(firstOption)
+    #             for option in options:
+    #                 partition = self.checkIfEnnemyIsInTheWay(option, board)
+    #                 if partition != []:
+    #                     self.ennemyInFrontOfMe = True
+    #                 if not(self.checkIfEnnemyInOptions(option, board)) and not(self.ennemyInFrontOfMe):
+    #                     self.drawArrow(board.screen,(0,0,0), start, self.pixelizePosition(option,pieceSize/2))
+
+    #             self.options["end"].add(firstOption)
         
 
                 

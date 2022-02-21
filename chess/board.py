@@ -7,6 +7,16 @@ class Board:
 
 
     def __init__(self, screen, background) -> None:
+
+        #Setting size variables
+        self.screen = screen
+        self.background = background
+        self.size = self.screen.get_size()
+        self.width = self.size[0]
+        self.height = self.size[1]
+        self.BLOCKSIZE = self.width/8
+
+        #Initiating the board
         blackPieces = self.initBlackSide()
         whitePieces = self.initWhiteSide()
         a = [whitePieces['rooks'][0], whitePieces['pawns'][0], 0, 0, 0, 0, blackPieces['pawns'][0], blackPieces['rooks'][0]]
@@ -17,16 +27,10 @@ class Board:
         f = [whitePieces['bishops'][1], whitePieces['pawns'][5], 0, 0, 0, 0, blackPieces['pawns'][5], blackPieces['bishops'][1]]
         g = [whitePieces['knights'][1], whitePieces['pawns'][6], 0, 0, 0, 0, blackPieces['pawns'][6], blackPieces['knights'][1]]
         h = [whitePieces['rooks'][1], whitePieces['pawns'][7], 0, 0, 0, 0, blackPieces['pawns'][7], blackPieces['rooks'][1]]
-
         self.board = [a,b,c,d,e,f,g,h]
-        self.screen = screen
-        self.background = background
-        #self.board = [h, g, f, e, d, c, b, a]
 
-        self.size = self.screen.get_size()
-        self.width = self.size[0]
-        self.height = self.size[1]
-        self.BLOCKSIZE = self.width/8
+        self.all_sprites = []
+
         
         
 
@@ -114,9 +118,9 @@ class Board:
 
     def drawSprites(self,board): #Dessine toutes les pièces de l'échiquier
         all_sprites_list = pygame.sprite.Group()
+
         width = self.screen.get_width()
         height = self.screen.get_height()
-        BLOCKSIZE = width/8
         i = 0
         for x in range(0, width, int(width/8)):
             j = 0
@@ -125,15 +129,18 @@ class Board:
             for y in range(0, height, int(height/8)):
                 block = self.board[i][j]
                 if isinstance(block, piece.Piece):
-                    block.set_position(x+14, y+14)
+                    block.set_position(x, y)
                     all_sprites_list.add(block)
 
                 j = j + 1
             i = i +1
         all_sprites_list.draw(self.screen)
+        self.all_sprites = all_sprites_list
         return all_sprites_list
 
     def loadImages(self):
+        
+        imageSize = (self.size[0]/8, self.size[1]/8)
         path = os.getcwd()
 
 
@@ -143,18 +150,41 @@ class Board:
         image_folder = os.path.abspath(os.path.join(path, 'static/img/'))
 
         black_bishop = pygame.image.load(os.path.abspath(os.path.join(image_folder,'black_bishop.png')))
+        black_bishop = pygame.transform.scale(black_bishop, imageSize)
+
         black_king = pygame.image.load(os.path.abspath(os.path.join(image_folder,'black_king.png')))
+        black_king = pygame.transform.scale(black_king, imageSize)
+
         black_knight = pygame.image.load(os.path.abspath(os.path.join(image_folder,'black_knight.png')))
+        black_knight = pygame.transform.scale(black_knight, imageSize)
+
         black_pawn = pygame.image.load(os.path.abspath(os.path.join(image_folder,'black_pawn.png')))
+        black_pawn = pygame.transform.scale(black_pawn, imageSize)
+
         black_queen = pygame.image.load(os.path.abspath(os.path.join(image_folder,'black_queen.png')))
+        black_queen = pygame.transform.scale(black_queen, imageSize)
+
         black_rook = pygame.image.load(os.path.abspath(os.path.join(image_folder,'black_rook.png')))
+        black_rook = pygame.transform.scale(black_rook, imageSize)
+
 
         white_bishop = pygame.image.load(os.path.abspath(os.path.join(image_folder,'white_bishop.png')))
+        white_bishop = pygame.transform.scale(white_bishop, imageSize)
+
         white_king = pygame.image.load(os.path.abspath(os.path.join(image_folder,'white_king.png')))
+        white_king = pygame.transform.scale(white_king, imageSize)
+
         white_knight = pygame.image.load(os.path.abspath(os.path.join(image_folder,'white_knight.png')))
+        white_knight = pygame.transform.scale(white_knight, imageSize)
+
         white_pawn = pygame.image.load(os.path.abspath(os.path.join(image_folder,'white_pawn.png')))
+        white_pawn = pygame.transform.scale(white_pawn, imageSize)
+
         white_queen = pygame.image.load(os.path.abspath(os.path.join(image_folder,'white_queen.png')))
+        white_queen = pygame.transform.scale(white_queen, imageSize)
+
         white_rook = pygame.image.load(os.path.abspath(os.path.join(image_folder,'white_rook.png')))
+        white_rook = pygame.transform.scale(white_rook, imageSize)
 
         allImages = {
             'black_bishop':black_bishop,

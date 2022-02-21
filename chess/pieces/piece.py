@@ -2,8 +2,10 @@ from tarfile import BLOCKSIZE
 from turtle import pos
 import pygame
 import math
+from variables import WIDTH, HEIGHT
 
-size = width, height = 1200, 1200
+size = WIDTH, HEIGHT
+
 
 #from main import screen
 class Piece(pygame.sprite.Sprite):
@@ -11,6 +13,8 @@ class Piece(pygame.sprite.Sprite):
         super().__init__()
         self.image = image
         self.rect = self.image.get_rect()
+        self.rect.w = WIDTH/8
+        self.rect.h = HEIGHT/8
         self.color = color #0 = white, 1 = black
         self.optionsShowed = False
         # self.rect.x = position.x
@@ -25,15 +29,17 @@ class Piece(pygame.sprite.Sprite):
             "end":set()
         }
 
-    def update_position(self, x, y):
-        print('updating piece to x: ', x, ' y:', y)
-        self.rect.x = self.rect.x + x
-        self.rect.y = self.rect.y + y
 
     def set_position(self, x, y):
-        #print('setting piece to x: ', x, ' y:', y)
         self.rect.x =  x
         self.rect.y =  y
+
+    def showOptions(self, board, pos):
+        if(self.optionsShowed==False):
+            self.calculateOptions(board, pos)
+            self.optionsShowed = True
+        else:
+            self.optionsShowed = False
 
     def getOptions(self):
         return self.options
@@ -41,45 +47,130 @@ class Piece(pygame.sprite.Sprite):
     def get_position(self):
         return(int(self.rect.x/self.BLOCKSIZE), int(self.rect.y/self.BLOCKSIZE))
 
+    def movePiece(self, board, oldPos, newPos):
+        
+        currentPiece = board.board[oldPos[0]][oldPos[1]]
+        targettedPiece = board.board[newPos[0]][newPos[1]]
+        #Si il y a un ennemi
+        if(self.checkIfEnnemyInOptions(newPos, board)==True):
+            del  board.board[newPos[0]][newPos[1]]
+            board.board[newPos[0]].insert(newPos[1], currentPiece)
+            #board.board[newPos[0]][newPos[1]] = currentPiece
+            board.board[oldPos[0]][oldPos[1]] = 0
+            targettedPiece.kill()
+            board.all_sprites.remove(targettedPiece)
+            del targettedPiece
+        #Si il n'y a pas d'ennemi
+        else:
+            board.board[oldPos[0]][oldPos[1]] = targettedPiece
+            board.board[newPos[0]][newPos[1]] = currentPiece
+        
+        board.reDrawBoard()
+        self.move()
+
+
+    
+    def clickOnMySelf(self, board, event):
+        """Does the action when the user clicks on the piece. It shows the possible options, or it hides it.
+
+        Args:
+            board (_type_): _description_
+            event (_type_): _description_
+        """
+        if(self.optionsShowed==False):
+            self.showOptions(board, event.pos)
+        else:
+            self.hideOptions(board)
+    
+    def clickElseWhere(self, event, board):
+        """Does the action when we click on something else than the piece itself.
+
+        Args:
+            event (_type_): _description_
+            board (_type_): _description_
+        """
+        clickPosition = board.getPositionOfClick(event.pos)
+        options = self.options["end"]
+        if(self.optionsShowed==True):
+            if(clickPosition in options):
+                self.movePiece(board, self.options['start'], clickPosition)
+            else:
+                self.hideOptions(board)
+
     def update(self, event_list, board):
         for event in event_list:
+            #We get the click event on the board.
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if self.rect.collidepoint(event.pos): 
-                    if(self.optionsShowed==False):
-                        self.showOptions(board, event.pos)
-                    elif(self.optionsShowed==True):
-                        self.hideOptions(board)
-                        self.options["end"] = set()
+                clickPosition = event.pos
+                #1er cas : on clique sur la pièce elle même
+                if(self.rect.collidepoint(event.pos)):
+                    self.clickOnMySelf(board, event)
+                #2e cas : on clique ailleurs que sur la case elle même
                 else:
-                    if(self.optionsShowed==True):
-                        #get where it got clicked
-                        (x,y) = board.getPositionOfClick(event.pos)
-                        (oldX, oldY) = self.get_position()
-                        (boardX, boardY) = (x, y)
-                        print(boardX, boardY)
-                        #on check si on peut se déplacer
-                        print("x, y", x, y)
-                        if((x,y) in self.options["end"]):
-                            if(x==oldX):
-                                board.board[x] = self.swapPositions(board.board[x], oldY,y)
-                            else:
-                                oldElem = board.board[oldX][oldY]
-                                newElem = board.board[x][y]
-                                board.board[oldX][oldY] = newElem
-                                board.board[x][y] = oldElem
-                            self.move()
-                        else:
-                            self.options["end"] = set()
-
-                        
-                        board.reDrawBoard()
+                    #Options showing :
+                        #On clique sur une option => On se déplace
+                        #On clique sur du vide => On cache les options
+                    #Options hidden : 
+                         #Il ne se passe rien
+                    self.clickElseWhere(event, board)
 
     def swapPositions(self, list, pos1, pos2):     
         list[pos1], list[pos2] = list[pos2], list[pos1]
         return list
+
+    def checkIfPieceIsInTheWayHorizontally(self, option, board):
+        position = self.options["start"]
+        x = position[0]
+        y = position[1]
+        partition = []
+        for i in range(x+1, option[0]):
+            if(board.board[i][y]!=0):
+                partition.append(board.board[i][y])
+        for i in range(option[0], x-1):
+            if(board.board[i][y]!=0):
+                partition.append(board.board[i][y])
+        return partition
+        
+    def checkIfPieceIsInTheWayVertically(self, option, board):
+        position = self.options["start"]
+        x = position[0]
+        y = position[1]
+        
+        if(option==(0,6)):
+            print('option :', option)
+            print('board.board[x][y+1:option[1]]', board.board[x][y+1:option[1]])
+            print('x : ', x)
+            print('y', y)
+            print('y-1', y-1, ' option[1]', option[1])
+        partition = board.board[x][y-1:option[1]]
+        if(option==(0,6)):
+            print('partition : ', partition)
+        ennemyPresent = False
+        for element in partition:
+            if element!=0 and type(element) == Piece:
+                ennemyPresent = True
+
+        if(option==(0,6)):
+            print('option :', option)
+            print('board.board[x][option[1]:y]', board.board[x][option[1]:y])
+            print('x : ', x)
+            print('y', y)
+            print('y-1', y-1, ' option[1]', option[1])
+        partition = board.board[x][option[1]:y-1]
+        if(option==(0,6)):
+            print('partition : ', partition)
+        for element in partition:
+            if element != 0 and type(element) == Piece:
+                ennemyPresent = True
+
+        if(ennemyPresent==True):
+            if(option==(0,6)):
+                print('return le partition')
+            return partition
+
     
-    def checkIfEnnemyIsInTheWay(self, option, board):
-        """Check if an ennemy is between the piece and the option chose
+    def checkIfEnnemyIsInTheWayVertically(self, option, board):
+        """Check if an ennemy is between the piece and the option chose VERTICALLY
 
         Args:
             position (x,y): The position of the piece
@@ -90,10 +181,7 @@ class Piece(pygame.sprite.Sprite):
         position = self.options["start"]
         x = position[0]
         y = position[1]
-        print('self.options', self.options)
         if(self.color==0):
-            print('y+1 : ', y+1)
-            print('option[1]', option[1])
             partition = board.board[x][y+1:option[1]]
             ennemyPresent = False
             for element in partition:
@@ -102,8 +190,6 @@ class Piece(pygame.sprite.Sprite):
             if ennemyPresent:
                 return partition
         else:
-            print('option[1]+1 : ', option[1]+1)
-            print('y ' , y)
             partition = board.board[x][option[1]:y]
             ennemyPresent = False
             for element in partition:
@@ -123,31 +209,32 @@ class Piece(pygame.sprite.Sprite):
         rotation = math.degrees(math.atan2(start[1]-end[1], end[0]-start[0]))+90
         pygame.draw.polygon(screen, colour, ((end[0]+20*math.sin(math.radians(rotation)), end[1]+20*math.cos(math.radians(rotation))), (end[0]+20*math.sin(math.radians(rotation-120)), end[1]+20*math.cos(math.radians(rotation-120))), (end[0]+20*math.sin(math.radians(rotation+120)), end[1]+20*math.cos(math.radians(rotation+120)))))
 
-    def showOptions(self, board):
-        print('showing options')
 
     def hideOptions(self, board):
         board.reDrawBoard()
         self.optionsShowed = False
+        self.options['start'] = ()
+        self.options["end"] = set()
 
     def checkIfEnnemyInOptions(self, option, board):
-        print('checking ennemies')
-        print("option : ", option[0])
-        print("board : ", board.board[0])
-        
         if(board.board[option[0]][option[1]]!=0):
-            print('there is an ennemy !')
             return True
         else:
             return False
+    
+    def drawPoint(self,screen, colour, option):
+        x = option[0]
+        y = option[1]
+        pygame.draw.ellipse(screen, colour, (x-self.BLOCKSIZE/4, y-self.BLOCKSIZE/4, self.BLOCKSIZE/2, self.BLOCKSIZE/2))
+
 
     def move(self):
-        print("todo")
+        self.options["end"] = set()
 
     def cleanShowOptionsShowed(self):
         self.optionsShowed = False
 
-    def kill(self):
+    def killPiece(self):
         print("todo")
 
     def die(self):
@@ -156,8 +243,49 @@ class Piece(pygame.sprite.Sprite):
     def display(self):
         print("todo")
 
-    def pixelizePosition(self, pos,pieceSize):
-        return (pos[0]*150+pieceSize, pos[1]*150+pieceSize)
+    def pixelizePosition(self, pos,pieceSize): 
+        return (pos[0]*pieceSize+pieceSize/2, pos[1]*pieceSize+pieceSize/2)
     
-    def unPixelizePosition(self, pos, pieceSize):
-        return (pos[0]/150+pieceSize, pos[1]/150+pieceSize)
+    # def unPixelizePosition(self, pos, pieceSize):
+    #     return (pos[0]/pieceSize-pieceSize/2, pos[1]/pieceSize-pieceSize/2)
+
+    # def updateBis(self, event_list, board):
+    #     for event in event_list:
+    #         if event.type == pygame.MOUSEBUTTONDOWN:
+    #             if self.rect.collidepoint(event.pos): 
+    #                 if(self.optionsShowed==False):
+    #                     self.showOptions(board, event.pos)
+    #                 elif(self.optionsShowed==True):
+    #                     self.hideOptions(board)
+                        
+    #             else:
+    #                 if(self.optionsShowed==True):
+    #                     #get where it got clicked
+    #                     (x,y) = board.getPositionOfClick(event.pos)
+    #                     (oldX, oldY) = self.get_position()
+    #                     (boardX, boardY) = (x, y)
+    #                     #on check si on peut se déplacer
+    #                     if((x,y) in self.options["end"]):
+    #                         print('rentre dedans')
+    #                         if(x==oldX):
+    #                             board.board[x] = self.swapPositions(board.board[x], oldY,y)
+    #                         else:
+    #                             if(self.checkIfEnnemyInOptions((x,y), board) == True):
+    #                                 print('killing ennemy')
+    #                                 oldElem = board.board[oldX][oldY]
+    #                                 newElem = board.board[x][y]
+    #                                 del newElem
+    #                                 board.board[oldX][oldY] = 0
+    #                                 board.board[x][y] = oldElem
+    #                             else:
+    #                                 print('moving to another case')
+    #                                 oldElem = board.board[oldX][oldY]
+    #                                 newElem = board.board[x][y]
+    #                                 board.board[oldX][oldY] = newElem
+    #                                 board.board[x][y] = oldElem
+    #                         self.move()
+    #                     else:
+    #                         self.options["end"] = set()
+
+                        
+    #                     board.reDrawBoard()
