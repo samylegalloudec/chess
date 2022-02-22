@@ -72,7 +72,7 @@ class Rook(Piece):
             board (_type_): _description_
             pieceSize (int): _description_
         """
-        self.drawPoint(board.screen,(0,0,0), self.pixelizePosition(option, pieceSize))
+        self.drawPoint(board.screen,(30,30,30), self.pixelizePosition(option, pieceSize))
 
 
 

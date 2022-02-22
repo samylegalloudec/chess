@@ -70,7 +70,12 @@ class Piece(pygame.sprite.Sprite):
         board.reDrawBoard()
         self.move()
 
-
+    def checkIfMovementsAreOutOfMap(self, events):
+        outOfMapMovements = []
+        for event in events:
+            if(event[0]<0 or event[0]>7 or event[1]<0 or event[1]>7):
+                outOfMapMovements.append(event)
+        return outOfMapMovements
     
     def clickOnMySelf(self, board, event):
         """Does the action when the user clicks on the piece. It shows the possible options, or it hides it.
