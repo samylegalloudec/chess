@@ -28,6 +28,7 @@ class Piece(pygame.sprite.Sprite):
             "start":(),
             "end":set()
         }
+        self.alive = True
 
 
     def set_position(self, x, y):
@@ -57,6 +58,7 @@ class Piece(pygame.sprite.Sprite):
             board.board[newPos[0]].insert(newPos[1], currentPiece)
             #board.board[newPos[0]][newPos[1]] = currentPiece
             board.board[oldPos[0]][oldPos[1]] = 0
+            targettedPiece.alive = False
             targettedPiece.kill()
             board.all_sprites.remove(targettedPiece)
             del targettedPiece
@@ -77,7 +79,7 @@ class Piece(pygame.sprite.Sprite):
             board (_type_): _description_
             event (_type_): _description_
         """
-        if(self.optionsShowed==False):
+        if(self.optionsShowed==False and self.alive==True):
             self.showOptions(board, event.pos)
         else:
             self.hideOptions(board)
@@ -123,10 +125,10 @@ class Piece(pygame.sprite.Sprite):
         x = position[0]
         y = position[1]
         partition = []
-        for i in range(x+1, option[0]):
+        for i in range(x+1, option[0]+1):
             if(board.board[i][y]!=0):
                 partition.append(board.board[i][y])
-        for i in range(option[0], x-1):
+        for i in range(option[0], x):
             if(board.board[i][y]!=0):
                 partition.append(board.board[i][y])
         return partition
@@ -135,38 +137,17 @@ class Piece(pygame.sprite.Sprite):
         position = self.options["start"]
         x = position[0]
         y = position[1]
-        
-        if(option==(0,6)):
-            print('option :', option)
-            print('board.board[x][y+1:option[1]]', board.board[x][y+1:option[1]])
-            print('x : ', x)
-            print('y', y)
-            print('y-1', y-1, ' option[1]', option[1])
-        partition = board.board[x][y-1:option[1]]
-        if(option==(0,6)):
-            print('partition : ', partition)
-        ennemyPresent = False
+        partition = []
+        partition = board.board[x][y+1:option[1]+1]
         for element in partition:
-            if element!=0 and type(element) == Piece:
-                ennemyPresent = True
+            if element!=0:
+                return partition
 
-        if(option==(0,6)):
-            print('option :', option)
-            print('board.board[x][option[1]:y]', board.board[x][option[1]:y])
-            print('x : ', x)
-            print('y', y)
-            print('y-1', y-1, ' option[1]', option[1])
-        partition = board.board[x][option[1]:y-1]
-        if(option==(0,6)):
-            print('partition : ', partition)
+        partition = board.board[x][option[1]:y]  
         for element in partition:
-            if element != 0 and type(element) == Piece:
-                ennemyPresent = True
-
-        if(ennemyPresent==True):
-            if(option==(0,6)):
-                print('return le partition')
-            return partition
+            if element != 0:
+                return partition
+        return []
 
     
     def checkIfEnnemyIsInTheWayVertically(self, option, board):
@@ -200,6 +181,31 @@ class Piece(pygame.sprite.Sprite):
         
         return []
             
+    def checkAroundMeForEnnemy(self, board):
+        position = self.options["start"]
+        x = position[0]
+        y = position[1]
+        upPiece = board.board[x][y-1 if y-1 >= 0 else 0]
+        downPiece = board.board[x][y+1 if y+1 < len(board.board[x]) else len(board.board[x])-1]
+        leftPiece = board.board[x-1 if x-1 >=0 else 0][y]
+        rightPiece = board.board[x+1 if x+1 < len(board.board) else len(board.board)-1][y]
+
+        if(upPiece != 0):
+            if(upPiece.color !=self.color):
+                self.options["end"].add((x, y-1))
+
+        if(downPiece != 0):
+            if(downPiece.color !=self.color):
+                self.options["end"].add((x, y+1))
+
+        if(leftPiece != 0):
+            if(leftPiece.color !=self.color):
+                self.options["end"].add((x-1, y))
+
+        if(rightPiece != 0):
+            if(rightPiece.color !=self.color):
+                self.options["end"].add((x+1, y))
+
 
     def partitionList(self,alist, indices):
         return [alist[i:j] for i, j in zip([0]+indices, indices+[None])]

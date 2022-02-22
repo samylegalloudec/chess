@@ -17,7 +17,7 @@ background = pygame.transform.scale(background, (WIDTH, HEIGHT))
 board = Board(screen, background)
 
 
-
+#TODO : Quand on tue une pièce, elle showOptions avant de mourir, ce qui fait le bug des flèches.
 
 screen.fill(black)
 screen.blit(background, [0,0])

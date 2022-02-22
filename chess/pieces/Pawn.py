@@ -1,4 +1,5 @@
 import secrets
+from tkinter import Toplevel
 from .piece import Piece
 
 #Peut avancer de 2 cases devant lui au premier tour, sinon 1 case devant lui uniquement.
@@ -25,23 +26,27 @@ class Pawn(Piece):
         x = pos[0]
         y = pos[1]
         if self.color == 0:
-            topLeft = board.board[x+1][y+1]
-            topRight = board.board[x-1 if x-1 >=0 else 0][y+1]
+            topRightPos = (x+1 if x+1<=7 else 7, y+1 if y+1 <=7 else 7)
+            topLeftPos = (x-1 if x-1 >=0 else 0, y+1 if y+1 <=7 else 7)
+            topLeft = board.board[topLeftPos[0]][topLeftPos[1]]
+            topRight = board.board[topRightPos[0]][topRightPos[1]]
             if(topLeft!=0):
                 if(topLeft.color != self.color):
-                    self.options["end"].add((x+1,y+1))
+                    self.options["end"].add(topLeftPos)
             if(topRight!=0):
                 if(topRight.color != self.color):
-                    self.options["end"].add((x-1,y+1))
+                    self.options["end"].add(topRightPos)
         else:
-            topLeft = board.board[x+1][y-1 if y-1 >=0 else 0]
-            topRight = board.board[x-1][y-1]
+            topLeftPos = (x+1 if x+1 <= 7 else 7,y-1 if y-1 >=0 else 0)
+            topRightPos = (x-1 if x-1 >=0 else 0, y-1 if y-1 >=0 else 0)
+            topLeft = board.board[topLeftPos[0]][topLeftPos[1]]
+            topRight = board.board[topRightPos[0]][topRightPos[1]]
             if(topLeft!=0):
                 if(topLeft.color != self.color):
-                    self.options["end"].add((x+1,y-1))
+                    self.options["end"].add(topLeftPos)
             if(topRight!=0):
                 if(topRight.color != self.color):
-                    self.options["end"].add((x-1,y-1))
+                    self.options["end"].add(topRightPos)
             
 
 
@@ -117,7 +122,6 @@ class Pawn(Piece):
             board (pygame.surface): The current board of the game
             pos (x,y): The position in PIXELS
         """
-        print('Calculating options for : ', self,self.color, board.getPositionOfClick(pos))
         pieceSize = board.screen.get_size()[0]/8                    #On récupère la taille d'une pièce via : La taille de l'écran divisé par le nombre de pièces
         x = int(pos[0]/pieceSize)                                   #Permet de récupérer l'indice du pion dans le board. Le x et y dans board.y avancent par pieceSize dans la boucle
         y = int(pos[1]/pieceSize)
@@ -146,8 +150,8 @@ class Pawn(Piece):
         self.optionsIfCanKill(board, (x,y))                         #On rajoute dans les options, les pièces tuables par le pion
 
 
+        print('options before draw : ', self.options["end"])
         #On dessine les options
-        print('options before drawing : ', self.options)
         for option in self.options["end"]:
             self.drawOption(option, board, pieceSize)
 
