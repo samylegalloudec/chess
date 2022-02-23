@@ -33,7 +33,8 @@ class Board:
 
         
         
-
+    def getPieceAtPosition(self, position):
+        return self.board[position[0]][position[1]]
 
     def display(self):
         print('todo')
